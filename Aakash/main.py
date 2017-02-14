@@ -9,10 +9,12 @@ from cvxopt.solvers import qp
 from cvxopt import matrix
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import MultinomialNB
 from nltk.corpus import stopwords
 
 #global stuff
 svm=LinearSVC()
+mnb=MultinomialNB()
 stops = stopwords.words('english')
 vectorizer = CountVectorizer(ngram_range=(1, 2), stop_words=stops, min_df=5)
 classTags=['hockey','movies','nba','news','nfl','politics','soccer','worldnews']
@@ -26,6 +28,7 @@ considerSamples=-1
 #specify method to be used
 #0 for my implementation
 #1 for sklearn implementation
+#2 for multinomial Naive Bayes
 method=1
 
 #Dictionary flag
@@ -45,7 +48,8 @@ def readInputClassesinOneGo(filename,count):
     f = open(filename, 'r')
     y = f.read();
     inputClasses = np.array(y.split('\r'));
-    inputClasses = inputClasses[0:count]
+    if count>0:
+        inputClasses = inputClasses[0:count]
     return inputClasses
 
 #writes the test results in filename file
@@ -173,8 +177,10 @@ else:
 print "determinig weights"
 if method==0:
     w=determineWeights(f,c)
+elif method==1:
+        svm.fit(f,c)
 else:
-    svm.fit(f,c)
+    mnb.fit(f,c)
 
 print "reading test file"
 f_t=readInputStoriesinOneGo('test_input_mod.csv',1000)
@@ -185,9 +191,10 @@ f_t=convertStoryToFeature(f_t)
 print "predicting output"
 if method==0:
     r=predict_svm(f_t,w)
-else:
+elif method==1:
     r=svm.predict(f_t)
-
+else:
+    r=mnb.predict(f_t)
 
 print "converting output to specific class"
 r=convertNumToClass(r)

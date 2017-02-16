@@ -1,7 +1,7 @@
 '''
 Created on Feb 3, 2017
 
-@author: eanuama
+
 '''
 import csv
 import re

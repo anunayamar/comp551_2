@@ -185,13 +185,20 @@ def euclidean_distance(instance1, instance2, length):
 
    
 
+def main():
+    start =  0
+    end = 5000
+    
+    for i in range(5):
+        runner(start, end)
+        start = start + 5000
+        end = end + 5000
+
 
 #This function should be run multiple times with different sets of training data, to change it, change the value of 
-# start and end for each execution instance    
-def main():
-    
-    start = 5000
-    end = 10000
+# start and end for each execution instance
+def runner(start, end):
+
     
     category_map = dict()    
     category_set = set()

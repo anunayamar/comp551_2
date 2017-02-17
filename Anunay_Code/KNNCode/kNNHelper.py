@@ -10,13 +10,11 @@ from collections import defaultdict
 
 #This takes the output of 5 different runs of kNN and performs voting to predict the category. It's kind of ensemble.
 def main():
-
-#Takes the result of 5 different runs of kNN.
-    src1 = "McGillResult\\src1\\result.csv"
-    src2 = "McGillResult\\src2\\result.csv"
-    src3 = "McGillResult\\src3\\result.csv"
-    src4 = "McGillResult\\src4\\result.csv"
-    src5 = "McGillResult\\src5\\result.csv"
+    src1 = "result1.csv"
+    src2 = "result2.csv"
+    src3 = "result3.csv"
+    src4 = "result4.csv"
+    src5 = "result5.csv"
     
     category_map =defaultdict()
     

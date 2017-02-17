@@ -7,7 +7,7 @@ import csv
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 import math
-import resultPredictor
+import kNNHelper
 
 
 
@@ -195,7 +195,7 @@ def main():
         start = start + 5000
         end = end + 5000
 
-    resultPredictor.main()
+    kNNHelper.main()
         
 
 #This function should be run multiple times with different sets of training data, to change it, change the value of 

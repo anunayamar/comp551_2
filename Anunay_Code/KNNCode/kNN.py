@@ -5,16 +5,14 @@ Created on Feb 3, 2017
 '''
 import csv
 import re
-import nltk
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 import math
 
 
 
+
 #Performs processing on the training input, calculates TF-IDF and predicts the result for the test data
-def process(start, end, category_map, category_set):
+def process(start, end, category_map, category_set, counter):
     
     conversation_map = dict()
     id_conversation_map = dict()    
@@ -52,14 +50,14 @@ def process(start, end, category_map, category_set):
             
 
     #This function will predict the result                
-    predict(dense_matrix, features, tf, conversation_map, category_map, category_set, start, end)
+    predict(dense_matrix, features, tf, conversation_map, category_map, category_set, start, end, counter)
      
                            
 
 #Predicts the category for the test data and writes the result into result.txt
-def predict(dense_matrix, features, tf, conversation_map, category_map, category_set, start, end):
+def predict(dense_matrix, features, tf, conversation_map, category_map, category_set, start, end, counter):
     
-    fileWriter = open("result.txt", "wb")
+    fileWriter = open("result" + str(counter) + ".txt", "wb")
     
     with open('test_input.csv', 'rb') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
@@ -185,21 +183,22 @@ def euclidean_distance(instance1, instance2, length):
 
    
 
+
 def main():
     start =  0
     end = 5000
     
+    
     for i in range(5):
-        runner(start, end)
+        runner(start, end, i+1)
         start = start + 5000
         end = end + 5000
 
 
 #This function should be run multiple times with different sets of training data, to change it, change the value of 
 # start and end for each execution instance
-def runner(start, end):
-
-    
+def runner(start, end, counter):
+  
     category_map = dict()    
     category_set = set()
         
@@ -219,7 +218,7 @@ def runner(start, end):
                 
                 
                 
-    process(start, end, category_map, category_set)
+    process(start, end, category_map, category_set, counter)
     
     
 if __name__ == '__main__':

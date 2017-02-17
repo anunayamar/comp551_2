@@ -183,7 +183,7 @@ def calculate_category_probability(words, category, total_documents, category_co
 def test_naive_bayes(category_count_map, word_category_map, category_wordcount_map, vocabulary):
     lmtz = WordNetLemmatizer()    
     
-    fileWriter = open("naive_bayes_output1", "wb")
+    fileWriter = open("test_output", "wb")
     
     with open('test_input.csv', 'rb') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')

@@ -11,25 +11,28 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.svm import LinearSVC
 from sklearn.naive_bayes import MultinomialNB
 from nltk.corpus import stopwords
+from sklearn.neural_network import MLPClassifier
 
 #global stuff
 svm=LinearSVC()
+nn=MLPClassifier(solver='lbfgs', alpha=1e-5,hidden_layer_sizes=(1000), random_state=1)
 mnb=MultinomialNB()
 stops = stopwords.words('english')
-vectorizer = CountVectorizer(ngram_range=(1, 2), stop_words=stops, min_df=5)
+vectorizer = CountVectorizer(ngram_range=(1, 2), stop_words=stops, max_features=400)
 classTags=['hockey','movies','nba','news','nfl','politics','soccer','worldnews']
 totalClasses=len(classTags)
 tags = re.compile('<.*?>')
 
 # the number of samples to be taken
 #set this to -1 to consider all samples
-considerSamples=-1
+considerSamples=1000
 
 #specify method to be used
 #0 for my implementation
 #1 for sklearn implementation
 #2 for multinomial Naive Bayes
-method=1
+#3 for Neural Network
+method=0
 
 #Dictionary flag
 DictSet=0
@@ -149,59 +152,198 @@ def predict_svm(X,weights):
     #pred_output stores a row vector with 1 in column to which that example belongs
     #its dimension is (examples*n)
     pred_output=np.dot(X,weights)
-    pred_result=1+np.argmax(pred_output, axis=1)
+    pred_result=np.argmax(pred_output, axis=1)
+    return np.array(pred_result)
+
+def convertResultVectorToNum(output):
+    pred_result = np.argmax(output, axis=1)
     return np.array(pred_result)
 
 #converts the class number to class name
 def convertNumToClass(classNum):
     result=np.array([])
     for i in range(classNum.size):
-        result=np.append(result,classTags[int(classNum[i]-1)]);
+        result=np.append(result,classTags[int(classNum[i])]);
     return result
 
-print "reading training input"
-f=readInputStoriesinOneGo('train_input_mod.csv',considerSamples)
-print "performing cleanup of input vector"
-f=performNLPCleanUp(f)
-print "converting it to feature vector"
-f=convertStoryToFeature(f)
+def getAccuracy(g_t,p_t):
+    confMat=np.zeros([g_t.size,p_t.size])
+    for i in range(g_t.size):
+        confMat[g_t[i],p_t[i]]=confMat[g_t[i],p_t[i]]+1
 
-print "reading classes for training data"
-c=readInputClassesinOneGo('train_output_mod.csv',considerSamples)
-print "converting it to class vectors"
-if method==0:
-    c=convertInputClassesToVector(c)
-else:
-    c=convertInputClassesToVectorSK(c)
+    cntDia=np.trace(confMat)
+    acc=float(cntDia)/g_t.size
+    return acc
 
-print "determinig weights"
-if method==0:
-    w=determineWeights(f,c)
-elif method==1:
+def getCrossValidationResults(k):
+    acc_train=np.array([])
+    acc_test=np.array([])
+    global DictSet
+    print "reading training input"
+    f = readInputStoriesinOneGo('train_input_mod.csv', considerSamples)
+    print "performing cleanup of input vector"
+    f = performNLPCleanUp(f)
+    print "converting it to feature vector"
+    f = convertStoryToFeature(f)
+
+    print "reading classes for training data"
+    c = readInputClassesinOneGo('train_output_mod.csv', considerSamples)
+    print "converting it to class vectors"
+    if method == 0:
+        c = convertInputClassesToVector(c)
+    else:
+        c = convertInputClassesToVectorSK(c)
+
+    foldSize=int(f.shape[0]/k)
+    for i in range(k):
+        DictSet=0
+        tst_f=f[i*foldSize:i*foldSize+foldSize,:]
+        tst_c=c[i*foldSize:i*foldSize+foldSize]
+        trn_f=f[0:i*foldSize,:]
+        if method==0:
+            trn_c=c[0:i*foldSize,:]
+        else:
+            trn_c=c[0:i*foldSize]
+        if trn_f.size==0:
+            trn_f=f[i*foldSize+foldSize:,:]
+
+
+            if method == 0:
+                trn_c = c[i*foldSize+foldSize:, :]
+            else:
+                trn_c = c[i*foldSize+foldSize:]
+
+        else:
+            trn_f = np.vstack((trn_f,f[i*foldSize+foldSize:,:]))
+            if method == 0:
+                trn_c = np.vstack((trn_c,c[i*foldSize + foldSize:,:]))
+            else:
+                trn_c = np.append(trn_c,c[i*foldSize + foldSize:])
+
+        print "determining weights for fold "+str(i)
+        if method == 0:
+            w = determineWeights(trn_f, trn_c)
+        elif method == 1:
+            svm.fit(trn_f, trn_c)
+        elif method==2:
+            mnb.fit(trn_f, trn_c)
+        else:
+            nn.fit(trn_f,trn_c)
+
+        print "predicting output on train set for fold "+str(i)
+        if method == 0:
+            trn_r = predict_svm(trn_f, w)
+            trn_c=convertResultVectorToNum(trn_c)
+        elif method == 1:
+            trn_r = svm.predict(trn_f)
+        elif method ==2 :
+            trn_r = mnb.predict(trn_f)
+        else:
+            trn_r=nn.predict(trn_f)
+
+
+        k_trn = getAccuracy(trn_c, trn_r)
+
+        print "train acc "+str(k_trn)
+        acc_train = np.append(acc_train,k_trn*100)
+
+        print "predicting output on test set for fold "+str(i)
+        if method == 0:
+            tst_r = predict_svm(tst_f, w)
+            tst_c = convertResultVectorToNum(tst_c)
+        elif method == 1:
+            tst_r = svm.predict(tst_f)
+        elif method==2:
+            tst_r = mnb.predict(tst_f)
+        else:
+            tst_r=nn.predict(tst_f)
+
+
+        k_tst = getAccuracy(tst_c, tst_r)
+
+        print "test acc " + str(k_tst)
+        acc_test = np.append(acc_test, k_tst*100)
+    print '\n'
+    print 'method '+str(method)
+    print 'samples considered '+str(considerSamples)
+    print 'fold\ttrain accuracy\ttest accuracy\n'
+    for i in range(k):
+        print str(i)+'\t'+str(acc_train[i])+'\t'+str(acc_test[i])
+
+    print "average training error "+str(np.mean(acc_train))
+    print "average testing error " + str(np.mean(acc_test))
+
+    return
+
+def getFinalResults():
+    print "reading training input"
+    f=readInputStoriesinOneGo('train_input_mod.csv',considerSamples)
+    print "performing cleanup of input vector"
+    f=performNLPCleanUp(f)
+    print "converting it to feature vector"
+    f=convertStoryToFeature(f)
+
+    print "reading classes for training data"
+    c=readInputClassesinOneGo('train_output_mod.csv',considerSamples)
+    print "converting it to class vectors"
+    if method==0:
+        c=convertInputClassesToVector(c)
+    else:
+        c=convertInputClassesToVectorSK(c)
+
+    print "determining weights"
+    if method==0:
+        w=determineWeights(f,c)
+    elif method==1:
         svm.fit(f,c)
-else:
-    mnb.fit(f,c)
+    elif method==2:
+        mnb.fit(f,c)
+    else:
+        nn.fit(f,c)
 
-print "reading test file"
-f_t=readInputStoriesinOneGo('test_input_mod.csv',1000)
-f_t=performNLPCleanUp(f_t)
-print "converting test file data to feature vector"
-f_t=convertStoryToFeature(f_t)
+    print "reading test file"
+    f_t=readInputStoriesinOneGo('test_input_mod.csv',considerSamples)
+    f_t=performNLPCleanUp(f_t)
+    print "converting test file data to feature vector"
+    f_t=convertStoryToFeature(f_t)
 
-print "predicting output"
-if method==0:
-    r=predict_svm(f_t,w)
-elif method==1:
-    r=svm.predict(f_t)
-else:
-    r=mnb.predict(f_t)
+    print "predicting training output"
+    if method == 0:
+        r_tr = predict_svm(f, w)
+    elif method == 1:
+        r_tr = svm.predict(f)
+    elif method == 2:
+        r_tr = mnb.predict(f)
+    else:
+        r_tr = nn.predict(f)
 
-print "converting output to specific class"
-r=convertNumToClass(r)
+    print getAccuracy(c,r_tr)
 
-print "writing data to the final.csv"
-outputfile=str(method)+'final.csv'
-print "writing data to "+outputfile
-writeCSVOutputClasses(outputfile,'id,category\n',r);
+    print "predicting output"
+    if method==0:
+        r=predict_svm(f_t,w)
+    elif method==1:
+        r=svm.predict(f_t)
+    elif method==2:
+        r=mnb.predict(f_t)
+    else:
+        r=nn.predict(f_t)
 
+    print "converting output to specific class"
+    r=convertNumToClass(r)
 
+    print "writing data to the final.csv"
+    outputfile=str(method)+'final.csv'
+    print "writing data to "+outputfile
+    writeCSVOutputClasses(outputfile,'id,category\n',r);
+    return
+
+# perform cross validation
+# set global variable method according to the algo to be used
+# Uncomment the following line
+getCrossValidationResults(5)
+
+# predict final output
+# result to be stored in (#method)final.txt
+# Uncomment the following line
+#getFinalResults()

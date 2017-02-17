@@ -7,6 +7,7 @@ import csv
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 import math
+import resultPredictor
 
 
 
@@ -194,6 +195,8 @@ def main():
         start = start + 5000
         end = end + 5000
 
+    resultPredictor.main()
+        
 
 #This function should be run multiple times with different sets of training data, to change it, change the value of 
 # start and end for each execution instance
